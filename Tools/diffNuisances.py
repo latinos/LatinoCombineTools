@@ -3,6 +3,16 @@ import re
 from sys import argv, stdout, stderr, exit
 from optparse import OptionParser
 
+import CombineHarvester.CombineTools.plotting as plot
+
+
+
+
+# tool to compare fitted nuisance parameters to prefit values.
+#
+# Also used to check for potential problems in RooFit workspaces to be used with combine
+# (see https://twiki.cern.ch/twiki/bin/viewauth/CMS/HiggsWG/HiggsPAGPreapprovalChecks)
+
 # import ROOT with a fix to get batch mode (http://root.cern.ch/phpBB3/viewtopic.php?t=3198)
 hasHelp = False
 for X in ("-h", "-?", "--help"):
@@ -27,6 +37,11 @@ parser.add_option("-p", "--poi",      dest="poi",    default="r",    type="strin
 parser.add_option("-f", "--format",   dest="format", default="text", type="string",  help="Output format ('text', 'latex', 'twiki'")
 parser.add_option("-g", "--histogram", dest="plotfile", default=None, type="string", help="If true, plot the pulls of the nuisances to the given file.")
 
+parser.add_option("-o", "--output", dest="output", default="test.root", type="string", help="If true, plot the pulls of the nuisances to the given file (pdf).")
+parser.add_option("-i", "--inputNuisances", dest="inputNuisances", default=None, type="string", help="If set, read the list of nuisances to be plotted in the pdf file")
+
+
+
 (options, args) = parser.parse_args()
 if len(args) == 0:
     parser.print_usage()
@@ -42,9 +57,14 @@ if fit_b == None or fit_b.ClassName()   != "RooFitResult": raise RuntimeError, "
 if prefit == None or prefit.ClassName() != "RooArgSet":    raise RuntimeError, "File %s does not contain the prefit nuisances 'nuisances_prefit'"  % args[0]
 
 isFlagged = {}
+
+# maps from nuisance parameter name to the row to be printed in the table
 table = {}
+
+# get the fitted parameters
 fpf_b = fit_b.floatParsFinal()
 fpf_s = fit_s.floatParsFinal()
+
 pulls = []
 
 nuis_p_i=0
@@ -52,65 +72,114 @@ nuis_p_i=0
 hist_fit_b  = ROOT.TH1F("prefit_fit_b"   ,"B-only fit Nuisances;;#theta ",prefit.getSize(),0,prefit.getSize())
 hist_fit_s  = ROOT.TH1F("prefit_fit_s"   ,"S+B fit Nuisances   ;;#theta ",prefit.getSize(),0,prefit.getSize())
 hist_prefit = ROOT.TH1F("prefit_nuisancs","Prefit Nuisances    ;;#theta ",prefit.getSize(),0,prefit.getSize())
+
+# loop over all fitted parameters
 for i in range(fpf_s.getSize()):
+
     nuis_s = fpf_s.at(i)
     name   = nuis_s.GetName();
     nuis_b = fpf_b.find(name)
     nuis_p = prefit.find(name)
+
+    #print " i=", i, " nuis_s = ", nuis_s  
+    
+    # keeps information to be printed about the nuisance parameter
     row = []
+
     flag = False;
     mean_p, sigma_p = 0,0
+
     if nuis_p == None:
+        # nuisance parameter NOT present in the prefit result
         if not options.abs: continue
-        row += [ "[%.6f, %.6f]" % (nuis_s.getMin(), nuis_s.getMax()) ]
+        row += [ "[%.2f, %.2f]" % (nuis_s.getMin(), nuis_s.getMax()) ]
+
     else:
+        # get best-fit value and uncertainty at prefit for this 
+        # nuisance parameter
         mean_p, sigma_p = (nuis_p.getVal(), nuis_p.getError())
-	if not sigma_p > 0: sigma_p = (nuis_p.getMax()-nuis_p.getMin())/2
+
+        if not sigma_p > 0: sigma_p = (nuis_p.getMax()-nuis_p.getMin())/2
         if options.abs: row += [ "%.6f +/- %.6f" % (nuis_p.getVal(), nuis_p.getError()) ]
+
     for fit_name, nuis_x in [('b', nuis_b), ('s',nuis_s)]:
         if nuis_x == None:
             row += [ " n/a " ]
         else:
-            row += [ "%+.6f +/- %.6f" % (nuis_x.getVal(), nuis_x.getError()) ]
-	
+            row += [ "%+.2f +/- %.2f" % (nuis_x.getVal(), nuis_x.getError()) ]
+        
             if nuis_p != None:
-	        if options.plotfile: 
-	          if fit_name=='b':
-	    	    nuis_p_i+=1
-	      	    hist_fit_b.SetBinContent(nuis_p_i,nuis_x.getVal())
-	      	    hist_fit_b.SetBinError(nuis_p_i,nuis_x.getError())
-	      	    hist_fit_b.GetXaxis().SetBinLabel(nuis_p_i,name)
-	          if fit_name=='s':
-	      	    hist_fit_s.SetBinContent(nuis_p_i,nuis_x.getVal())
-	      	    hist_fit_s.SetBinError(nuis_p_i,nuis_x.getError())
-	      	    hist_fit_s.GetXaxis().SetBinLabel(nuis_p_i,name)
-		  hist_prefit.SetBinContent(nuis_p_i,mean_p)
-		  hist_prefit.SetBinError(nuis_p_i,sigma_p)
-	      	  hist_prefit.GetXaxis().SetBinLabel(nuis_p_i,name)
+                if options.plotfile: 
+                  if fit_name=='b':
+                    nuis_p_i+=1
+                    hist_fit_b.SetBinContent(nuis_p_i,nuis_x.getVal())
+                    hist_fit_b.SetBinError(nuis_p_i,nuis_x.getError())
+                    hist_fit_b.GetXaxis().SetBinLabel(nuis_p_i,name)
+                  if fit_name=='s':
+                    hist_fit_s.SetBinContent(nuis_p_i,nuis_x.getVal())
+                    hist_fit_s.SetBinError(nuis_p_i,nuis_x.getError())
+                    hist_fit_s.GetXaxis().SetBinLabel(nuis_p_i,name)
+                  hist_prefit.SetBinContent(nuis_p_i,mean_p)
+                  hist_prefit.SetBinError(nuis_p_i,sigma_p)
+                  hist_prefit.GetXaxis().SetBinLabel(nuis_p_i,name)
 
                 if sigma_p>0: 
-			valShift = (nuis_x.getVal() - mean_p)/sigma_p
-                	sigShift = nuis_x.getError()/sigma_p
-		else :
-			print "No definition for prefit uncertainty %s. Printing absolute shifts"%(nuis_p.GetName())
-			valShift = (nuis_x.getVal() - mean_p)
-                	sigShift = nuis_x.getError()
+
+                        # calculate the difference of the nuisance parameter
+                        # w.r.t to the prefit value in terms of the uncertainty
+                        # on the prefit value
+                        valShift = (nuis_x.getVal() - mean_p)/sigma_p
+
+                        # ratio of the nuisance parameter's uncertainty
+                        # w.r.t the prefit uncertainty
+                        sigShift = nuis_x.getError()/sigma_p
+
+                else :
+                        print "No definition for prefit uncertainty %s. Printing absolute shifts"%(nuis_p.GetName())
+                        valShift = (nuis_x.getVal() - mean_p)
+                        sigShift = nuis_x.getError()
                 if fit_name == 'b':
                     pulls.append(valShift)
                 if options.abs:
-                    row[-1] += " (%+4.6fsig, %4.6f)" % (valShift, sigShift)
+                    row[-1] += " (%+4.2fsig, %4.2f)" % (valShift, sigShift)
                 else:
-                    row[-1] = " %+4.6f, %4.6f" % (valShift, sigShift)
+                    row[-1] = " %+4.2f, %4.2f" % (valShift, sigShift)
+
                 if (abs(valShift) > options.vtol2 or abs(sigShift-1) > options.stol2):
+
+                    # severely report this nuisance:
+                    # 
+                    # the best fit moved by more than 2.0 sigma or the uncertainty (sigma)
+                    # changed by more than 50% (default thresholds) w.r.t the prefit values
+
                     isFlagged[(name,fit_name)] = 2
+
                     flag = True
+
                 elif (abs(valShift) > options.vtol  or abs(sigShift-1) > options.stol):
+
+                    # report this nuisance:
+                    # 
+                    # the best fit moved by more than 0.3 sigma or the uncertainty (sigma)
+                    # changed by more than 10% (default thresholds) w.r.t the prefit values
+
                     if options.all: isFlagged[(name,fit_name)] = 1
+
                     flag = True
+
                 elif options.all:
                     flag = True
-    row += [ "%+4.6f"  % fit_s.correlation(name, options.poi) ]
+
+    # end of loop over s and b
+
+    row += [ "%+4.2f"  % fit_s.correlation(name, options.poi) ]
     if flag or options.all: table[name] = row
+
+#end of loop over all fitted parameters
+
+#----------
+# print the results
+#----------
 
 fmtstring = "%-40s     %15s    %15s  %10s"
 highlight = "*%s*"
@@ -192,6 +261,8 @@ if options.format == "latex":
 elif options.format == "html":
     print "</table></body></html>"
 
+
+
 def getGraph(hist,shift):
 
    gr = ROOT.TGraphErrors()
@@ -203,6 +274,17 @@ def getGraph(hist,shift):
      gr.SetPoint(i,x,y)
      gr.SetPointError(i,float(abs(shift))*0.8,e)
    return gr
+
+
+
+list_nuisances = []
+if options.inputNuisances :
+  import json
+  print " inputNuisances = ", options.inputNuisances
+  with open(options.inputNuisances, "r") as data_file:    
+    data = json.load(data_file)
+    list_nuisances =  data['nuisances']
+    
 
 if options.plotfile:
     import ROOT
@@ -223,20 +305,20 @@ if options.plotfile:
     fout.WriteTObject(canvas)
 
     canvas_nuis = ROOT.TCanvas("nuisancs", "nuisances", 900, 600)
-    hist_fit_e_s = hist_fit_s.Clone()
-    hist_fit_e_b = hist_fit_b.Clone()
-    hist_fit_s = getGraph(hist_fit_s,-0.1)
-    hist_fit_b = getGraph(hist_fit_b, 0.1)
-    hist_fit_s.SetLineColor(ROOT.kRed)
-    hist_fit_s.SetMarkerColor(ROOT.kRed)
-    hist_fit_b.SetLineColor(ROOT.kBlue)
-    hist_fit_b.SetMarkerColor(ROOT.kBlue)
-    hist_fit_b.SetMarkerStyle(20)
-    hist_fit_s.SetMarkerStyle(20)
-    hist_fit_b.SetMarkerSize(1.0)
-    hist_fit_s.SetMarkerSize(1.0)
-    hist_fit_b.SetLineWidth(2)
-    hist_fit_s.SetLineWidth(2)
+    hist_fit_e_s = hist_fit_s.Clone("errors_s")
+    hist_fit_e_b = hist_fit_b.Clone("errors_b")
+    gr_fit_s = getGraph(hist_fit_s,-0.1)
+    gr_fit_b = getGraph(hist_fit_b, 0.1)
+    gr_fit_s.SetLineColor(ROOT.kRed)
+    gr_fit_s.SetMarkerColor(ROOT.kRed)
+    gr_fit_b.SetLineColor(ROOT.kBlue)
+    gr_fit_b.SetMarkerColor(ROOT.kBlue)
+    gr_fit_b.SetMarkerStyle(20)
+    gr_fit_s.SetMarkerStyle(20)
+    gr_fit_b.SetMarkerSize(1.0)
+    gr_fit_s.SetMarkerSize(1.0)
+    gr_fit_b.SetLineWidth(2)
+    gr_fit_s.SetLineWidth(2)
     hist_prefit.SetLineWidth(2)
     hist_prefit.SetTitle("Nuisance Paramaeters")
     hist_prefit.SetLineColor(ROOT.kBlack)
@@ -245,8 +327,8 @@ if options.plotfile:
     hist_prefit.SetMinimum(-3)
     hist_prefit.Draw("E2")
     hist_prefit.Draw("histsame")
-    hist_fit_b.Draw("EPsame")
-    hist_fit_s.Draw("EPsame")
+    gr_fit_b.Draw("EPsame")
+    gr_fit_s.Draw("EPsame")
     canvas_nuis.SetGridx()
     canvas_nuis.RedrawAxis()
     canvas_nuis.RedrawAxis('g')
@@ -254,15 +336,14 @@ if options.plotfile:
     leg.SetFillColor(0)
     leg.SetTextFont(42)
     leg.AddEntry(hist_prefit,"Prefit","FL")
-    leg.AddEntry(hist_fit_b,"B-only fit","EPL")
-    leg.AddEntry(hist_fit_s,"S+B fit"   ,"EPL")
+    leg.AddEntry(gr_fit_b,"B-only fit","EPL")
+    leg.AddEntry(gr_fit_s,"S+B fit"   ,"EPL")
     leg.Draw()
     fout.WriteTObject(canvas_nuis)
-
     canvas_pferrs = ROOT.TCanvas("post_fit_errs", "post_fit_errs", 900, 600)
     for b in range(1,hist_fit_e_s.GetNbinsX()+1): 
-      hist_fit_e_s.SetBinContent(b,hist_fit_e_s.GetBinError(b)/hist_prefit.GetBinError(b))
-      hist_fit_e_b.SetBinContent(b,hist_fit_e_b.GetBinError(b)/hist_prefit.GetBinError(b))
+      hist_fit_e_s.SetBinContent(b,hist_fit_s.GetBinError(b)/hist_prefit.GetBinError(b))
+      hist_fit_e_b.SetBinContent(b,hist_fit_b.GetBinError(b)/hist_prefit.GetBinError(b))
       hist_fit_e_s.SetBinError(b,0)
       hist_fit_e_b.SetBinError(b,0)
     hist_fit_e_s.SetFillColor(ROOT.kRed)
@@ -289,5 +370,145 @@ if options.plotfile:
 
     fout.WriteTObject(canvas_pferrs)
 
+
+
+    #
+    # fancy impact plot style
+    
+    import math
+    
+    # number of nuisances
+    #n_params_total = fpf_s.getSize()
+    n_params_total = gr_fit_s.GetN()
+    
+    if len(list_nuisances) != 0 :
+      n_params_total = len(list_nuisances)
+    
+    print " n_params_total = ", n_params_total
+    
+    # Set the global plotting style
+    plot.ModTDRStyle(l=0.4, b=0.10, width=700)
+    
+    # Set the number of parameters per page (show) and the number of pages (n)
+    show = 30 # hardcoded -> but it could be passed by user command line
+    n = int(math.ceil(float(n_params_total) / float(show)))
+    #print " n = ", n, " fpf_s.getSize() = ", fpf_s.getSize()
+    
+    # loop over the pages
+    for page in xrange(n):
+
+      canv = ROOT.TCanvas( options.output , options.output )    
+      
+      # parameters in this page: check not to exceed the maximum number of parameters available
+      n_params = show
+      if (n_params_total - page * show) < n_params :
+        n_params = (n_params_total - page * show)
+        
+      boxes = []
+      for i in xrange(n_params):
+        y1 = ROOT.gStyle.GetPadBottomMargin()
+        y2 = 1. - ROOT.gStyle.GetPadTopMargin()
+        h = (y2 - y1) / float(n_params)
+        y1 = y1 + float(i) * h
+        y2 = y1 + h
+        box = ROOT.TPaveText(0, y1, 1, y2, 'NDC')
+        plot.Set(box, TextSize=0.02, BorderSize=0, FillColor=0, TextAlign=12, Margin=0.005)
+        if i % 2 == 0:
+            box.SetFillColor(18)
+        box.AddText('%i' % (n_params - i + page * show))
+        box.Draw()
+        boxes.append(box)
    
+      # Crate and style the pads
+      #pads = plot.TwoPadSplitColumns(0.7, 0., 0.)
+      pads = plot.TwoPadSplitColumns(0.67, 0., 0.)
+      pads[0].SetGrid(1, 0)
+      pads[0].SetTickx(1)
+      pads[1].SetGrid(1, 0)
+      pads[1].SetTickx(1)
+   
+  
+      h_pulls = ROOT.TH2F("pulls", "pulls", 6, -2.9, 2.9, n_params, 0, n_params)
+      g_pulls = ROOT.TGraphAsymmErrors(n_params)
+      g_pulls_b = ROOT.TGraphAsymmErrors(n_params)
+   
+      text_entries = []
+      for p in xrange(n_params):
+          i = n_params - (p + 1)
+          
+          if len(list_nuisances) == 0 :
+            
+              # s+b fit
+              g_pulls.SetPoint(i, gr_fit_s.GetY()[i + page * show], float(i) + 0.5)
+              g_pulls.SetPointError( i, gr_fit_s.GetErrorYlow(i + page * show), gr_fit_s.GetErrorYhigh(i + page * show), 0., 0.)
+              
+              # b fit
+              g_pulls_b.SetPoint(i, gr_fit_b.GetY()[i + page * show], float(i) + 0.5)
+              g_pulls_b.SetPointError( i, gr_fit_b.GetErrorYlow(i + page * show), gr_fit_s.GetErrorYhigh(i + page * show), 0., 0.)
+              
+              col = 1
+              h_pulls.GetYaxis().SetBinLabel( i + 1, ('#color[%i]{%s}'% (col, hist_fit_e_s.GetXaxis().GetBinLabel(i + page * show + 1)    )))
+   
+          
+          else :
+            
+              for ibin in xrange(gr_fit_s.GetN()) :                
+                if hist_fit_e_s.GetXaxis().GetBinLabel(ibin+1) == list_nuisances[i + page * show] :
+                               
+                  # s+b fit
+                  g_pulls.SetPoint(i, gr_fit_s.GetY()[ibin], float(i) + 0.5)
+                  g_pulls.SetPointError( i, gr_fit_s.GetErrorYlow(ibin), gr_fit_s.GetErrorYhigh(ibin), 0., 0.)
+                  
+                  # b fit
+                  g_pulls_b.SetPoint(i, gr_fit_b.GetY()[ibin], float(i) + 0.5)
+                  g_pulls_b.SetPointError( i, gr_fit_b.GetErrorYlow(ibin), gr_fit_s.GetErrorYhigh(ibin), 0., 0.)
+                  
+                  col = 1
+                  h_pulls.GetYaxis().SetBinLabel( i + 1, ('#color[%i]{%s}'% (col, hist_fit_e_s.GetXaxis().GetBinLabel(ibin + 1)    )))
+            
+          
+   
+             
+      # Style and draw the pulls histo
+      plot.Set(h_pulls.GetXaxis(), TitleSize=0.04, LabelSize=0.03, Title='S+B hyp (#hat{#theta}-#theta_{0})/#Delta#theta')
+      plot.Set(h_pulls.GetYaxis(), LabelSize=0.022, TickLength=0.0)
+      h_pulls.GetYaxis().LabelsOption('v')
+      h_pulls.Draw()
+  
+      pads[1].cd()
+      h_impacts = ROOT.TH2F("pullsb", "pullsb", 6, -2.9, 2.9, n_params, 0, n_params)
+      #plot.Set(h_impacts.GetXaxis(), LabelSize=0.03, TitleSize=0.04, Ndivisions=505, Title='B hyp (#hat{#theta}-#theta_{0})/#Delta#theta')
+      plot.Set(h_impacts.GetXaxis(), TitleSize=0.04, LabelSize=0.03, Title='B hyp (#hat{#theta}-#theta_{0})/#Delta#theta')
+      plot.Set(h_impacts.GetYaxis(), LabelSize=0.022, TickLength=0.0)
+      
+      h_impacts.GetYaxis().SetLabelOffset(999);
+      h_impacts.GetYaxis().SetLabelSize(0);
+      h_impacts.Draw()
+
+  
+      # the first pad to draw the pulls graph in the signal + background hypothesis
+      pads[0].cd()
+      plot.Set(g_pulls, MarkerSize=0.8, LineWidth=2)
+      g_pulls.Draw('PSAME')
+
+      # the second pad to draw the pulls graph in the background hypothesis
+      pads[1].cd()
+      plot.Set(g_pulls_b, MarkerSize=0.8, LineWidth=2)
+      g_pulls_b.Draw('PSAME')
+      pads[1].RedrawAxis()
+
+  
+      plot.DrawCMSLogo(pads[0], 'CMS', 'Internal', 0, 0.25, 0.00, 0.00)
+
+      extra = ''
+      if page == 0:
+          extra = '('
+      if page == n - 1:
+          extra = ')'
+      canv.Print('.pdf%s' % extra)
+
+
+
+
+
 

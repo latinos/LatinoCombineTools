@@ -31,4 +31,35 @@ New features:
     python diffNuisances.py -a /afs/cern.ch/user/a/amassiro/Framework/CMSSW_8_0_5/src/PlotsConfigurations/Configurations/mlfitCombined.vbf.pruned.txt.MaxLikelihoodFit.0.5.root.root    -g plots.root   -o testdpf.root  -i example/listNuisances.json
 
 
-    
+# PRODUCE PULLS
+
+  cd <yourDirectory>/CMSSW_7_4_7/src/HiggsAnalysis/CombinedLimit/
+
+  cmsenv 
+
+  cd -
+
+For background-only Asimov dataset:
+
+  combine -M MaxLikelihoodFit -t -1 --expectSignal 0 --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n myBkgAsimov
+
+  python diffNuisances.py -a mlfitmyBkgAsimov.root -a -f latex --histogram pullsmyBkgAsimov.root
+
+For signal + background Asimov dataset:
+
+  combine -M MaxLikelihoodFit -t -1 --expectSignal 1 --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n mySigAsimov
+
+  python diffNuisances.py -a mlfitmySigAsimov.root -a -f latex --histogram pullsmySigAsimov.root
+
+For real data:
+
+  combine -M MaxLikelihoodFit --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n myUnblind
+
+  python diffNuisances.py -a mlfitmymyUnblind.root -a -f latex --histogram pullsmyUnblind.root
+
+
+
+
+
+
+

@@ -33,29 +33,29 @@ New features:
 
 # PRODUCE PULLS
 
-  cd <yourDirectory>/CMSSW_7_4_7/src/HiggsAnalysis/CombinedLimit/
+    cd <yourDirectory>/CMSSW_7_4_7/src/HiggsAnalysis/CombinedLimit/
 
-  cmsenv 
+    cmsenv 
 
-  cd -
+    cd -
 
 For background-only Asimov dataset:
 
-  combine -M MaxLikelihoodFit -t -1 --expectSignal 0 --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n myBkgAsimov
+    combine -M MaxLikelihoodFit -t -1 --expectSignal 0 --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n myBkgAsimov
 
-  python diffNuisances.py -a mlfitmyBkgAsimov.root -a -f latex --histogram pullsmyBkgAsimov.root
+    python diffNuisances.py -a mlfitmyBkgAsimov.root -a -f latex --histogram pullsmyBkgAsimov.root
 
 For signal + background Asimov dataset:
 
-  combine -M MaxLikelihoodFit -t -1 --expectSignal 1 --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n mySigAsimov
+    combine -M MaxLikelihoodFit -t -1 --expectSignal 1 --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n mySigAsimov
 
-  python diffNuisances.py -a mlfitmySigAsimov.root -a -f latex --histogram pullsmySigAsimov.root
+    python diffNuisances.py -a mlfitmySigAsimov.root -a -f latex --histogram pullsmySigAsimov.root
 
 For real data:
 
-  combine -M MaxLikelihoodFit --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n myUnblind
+    combine -M MaxLikelihoodFit --robustFit 1 --saveShapes --saveWithUncertainties datacard.txt -n myUnblind
 
-  python diffNuisances.py -a mlfitmymyUnblind.root -a -f latex --histogram pullsmyUnblind.root
+    python diffNuisances.py -a mlfitmymyUnblind.root -a -f latex --histogram pullsmyUnblind.root
 
 
 

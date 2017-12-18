@@ -9,6 +9,12 @@ Impact plot without correlation
     - the variation of the signal strength is used in the right part of the impact plot and is is used in the ranking
 
 
+Code to be replaced:
+
+    src/CombineHarvester/CombineTools/python/combine/utils.py
+
+    src/CombineHarvester/CombineTools/python/combine/Impacts.py
+
 
 How to use:
 

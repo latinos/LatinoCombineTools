@@ -25,8 +25,8 @@ argv.remove( '-b-' )
 if hasHelp: argv.append("-h")
 
 parser = OptionParser(usage="usage: %prog [options] in.root  \nrun with --help to get list of options")
-parser.add_option("-A", "--asimov", dest="asimov", default="",  type="string", help="Asimov fit result")
-parser.add_option("-D", "--data", dest="data", default="",  type="string", help="Data result")
+parser.add_option("-A", "--A", dest="Fit A", default="",  type="string", help="Fit A result")
+parser.add_option("-B", "--B", dest="Fit B", default="",  type="string", help="Fit B result")
 parser.add_option("--order", dest="order", default="",  type="string", help="Ordered list of nuisance")
 parser.add_option("-o", "--output", dest="output", default="test.root", type="string", help="If true, plot the pulls of the nuisances to the given file (pdf).")
 
@@ -34,11 +34,11 @@ parser.add_option("-o", "--output", dest="output", default="test.root", type="st
 (options, args) = parser.parse_args()
 
 
-fileA = ROOT.TFile(options.asimov)
-fileB = ROOT.TFile(options.data)
+fileA = ROOT.TFile(options.A)
+fileB = ROOT.TFile(options.B)
 
-if fileA == None: raise RuntimeError, "Cannot open file %s" % options.asimov
-if fileB == None: raise RuntimeError, "Cannot open file %s" % options.data
+if fileA == None: raise RuntimeError, "Cannot open file %s" % options.A
+if fileB == None: raise RuntimeError, "Cannot open file %s" % options.B
 
 fit_s_A  = fileA.Get("fit_s")
 fit_s_B = fileB.Get("fit_s")
@@ -48,8 +48,8 @@ nuisance_list = [ f.strip() for f in open(options.order).readlines()]
 prefit_A = fileA.Get("nuisances_prefit")
 prefit_B = fileB.Get("nuisances_prefit")
 
-if fit_s_A == None or fit_s_A.ClassName()   != "RooFitResult": raise RuntimeError, "File %s does not contain the output of the signal fit 'fit_s'"     % options.asimov
-if fit_s_B == None or fit_s_B.ClassName()   != "RooFitResult": raise RuntimeError, "File %s does not contain the output of the signal fit 'fit_s'"     % options.data
+if fit_s_A == None or fit_s_A.ClassName()   != "RooFitResult": raise RuntimeError, "File %s does not contain the output of the signal fit 'fit_s'"     % options.A
+if fit_s_B == None or fit_s_B.ClassName()   != "RooFitResult": raise RuntimeError, "File %s does not contain the output of the signal fit 'fit_s'"     % options.B
 
 isFlagged = {}
 
@@ -217,7 +217,7 @@ for page in xrange(n):
 
             
     # Style and draw the pulls histo
-    plot.Set(h_pulls.GetXaxis(), TitleSize=0.04, LabelSize=0.03, Title='Asimov (#hat{#theta}-#theta_{0})/#Delta#theta')
+    plot.Set(h_pulls.GetXaxis(), TitleSize=0.04, LabelSize=0.03, Title='A (#hat{#theta}-#theta_{0})/#Delta#theta')
     plot.Set(h_pulls.GetYaxis(), LabelSize=0.022, TickLength=0.0)
     h_pulls.GetYaxis().LabelsOption('v')
     h_pulls.Draw()
@@ -225,7 +225,7 @@ for page in xrange(n):
     pads[1].cd()
     h_impacts = ROOT.TH2F("pullsb", "pullsb", 6, -2.5, 2.5, n_params, 0, n_params)
     #plot.Set(h_impacts.GetXaxis(), LabelSize=0.03, TitleSize=0.04, Ndivisions=505, Title='B hyp (#hat{#theta}-#theta_{0})/#Delta#theta')
-    plot.Set(h_impacts.GetXaxis(), TitleSize=0.04, LabelSize=0.03, Title='Data (#hat{#theta}-#theta_{0})/#Delta#theta')
+    plot.Set(h_impacts.GetXaxis(), TitleSize=0.04, LabelSize=0.03, Title='B (#hat{#theta}-#theta_{0})/#Delta#theta')
     plot.Set(h_impacts.GetYaxis(), LabelSize=0.022, TickLength=0.0)
     
     h_impacts.GetYaxis().SetLabelOffset(999);

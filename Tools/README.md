@@ -36,7 +36,9 @@ Comparison between two fits:
     
     Example:
      
-    python diffNuisances_compare.py -A fitDiagnostics.A.root  -D fitDiagnostics.B.root -o output.pdf --order ordered_nuisances.txt
+    python diffNuisances_compare.py -A fitDiagnostics.A.root  -B fitDiagnostics.B.root -o output.pdf --order ordered_nuisances.txt
+
+    e.g. Data-Asimov vs Data
 
 # PRODUCE PULLS
 

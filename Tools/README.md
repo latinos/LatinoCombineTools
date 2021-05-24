@@ -30,6 +30,15 @@ New features:
     
     python diffNuisances.py -a /afs/cern.ch/user/a/amassiro/Framework/CMSSW_8_0_5/src/PlotsConfigurations/Configurations/mlfitCombined.vbf.pruned.txt.MaxLikelihoodFit.0.5.root.root    -g plots.root   -o testdpf.root  -i example/listNuisances.json
 
+Comparison between two fits:
+
+    The parameters of two fits can be compared with a dedicated script. The order of the nuisances must be specified via a txt file.
+    
+    Example:
+     
+    python diffNuisances_compare.py -A fitDiagnostics.A.root  -B fitDiagnostics.B.root -o output.pdf --order ordered_nuisances.txt
+
+    e.g. Data-Asimov vs Data
 
 # PRODUCE PULLS
 
